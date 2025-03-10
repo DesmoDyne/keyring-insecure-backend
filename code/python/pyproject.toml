@@ -1,12 +1,38 @@
-[project]
-name = "keyring-insecure-backend"
-version = "0.1.0"
-authors = [
-    { name = "Stefan Schablowski", email = "stefan.schablowski@desmodyne.com" }
-]
-requires-python = ">=3.10"
-dependencies = []
+# pyproject.toml
+#
+# python project configuration
+#
+# author  : stefan schablowski
+# contact : stefan.schablowski@desmodyne.com
+# created : 2025-03-10
+
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires       = ['hatchling']
+build-backend  = 'hatchling.build'
+
+
+[project]
+authors = [
+    { name = 'Stefan Schablowski', email = 'stefan.schablowski@desmodyne.com' }
+]
+
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Environment :: Console',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: MIT License',
+    'Natural Language :: English',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3',
+    'Topic :: Security',
+    'Typing :: Typed'
+]
+
+dependencies = []
+
+description        = 'An insecure Keyring backend that stores secrets in plain text.'
+license            = { text = 'MIT' }
+name               = 'keyring-insecure-backend'
+requires-python    = '>=3.10'
+version            = '0.0.0'
