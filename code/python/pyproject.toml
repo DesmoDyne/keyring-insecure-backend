@@ -38,3 +38,9 @@ license            = { text = 'MIT' }
 name               = 'keyring-insecure-backend'
 requires-python    = '>=3.10'
 version            = '0.0.0'
+
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.10",
+]
