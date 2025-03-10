@@ -29,7 +29,9 @@ classifiers = [
     'Typing :: Typed'
 ]
 
-dependencies = []
+dependencies = [
+    "keyring>=25.6.0",
+]
 
 description        = 'An insecure Keyring backend that stores secrets in plain text.'
 license            = { text = 'MIT' }
