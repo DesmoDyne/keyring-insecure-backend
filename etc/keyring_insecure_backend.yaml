@@ -1,0 +1,23 @@
+---
+# keyring_insecure_backend.yaml
+#
+# Insecure Keyring Backend configuration.
+#
+# author  : stefan schablowski
+# contact : stefan.schablowski@desmodyne.com
+# created : 2025-03-11
+
+
+# NOTE: this configuration file is expected at an OS-dependent user conf path;
+# Linux / Ubuntu 24.04 LTS:
+#   ${HOME}/.config/InsecureKeyringBackend/keyring_insecure_backend.yaml
+# macOS / Sonoma 14.7:
+#   ${HOME}/Library/Application Support/InsecureKeyringBackend/keyring_insecure_backend.yaml
+
+
+# path to log file, relative to OS-dependent user log path;
+# Linux / Ubuntu 24.04 LTS:
+#   ${HOME}/.local/state/InsecureKeyringBackend/log/<path_to_log_file>
+# macOS / Sonoma 14.7:
+#   ${HOME}/Library/Logs/InsecureKeyringBackend/<path_to_log_file>
+path_to_log_file:  keyring_insecure_backend.log
