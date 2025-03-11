@@ -31,6 +31,10 @@ classifiers = [
 
 dependencies = [
     "keyring>=25.6.0",
+    "platformdirs>=4.3.6",
+    "pydantic>=2.10.6",
+    "pyyaml>=6.0.2",
+    "rich>=13.9.4",
 ]
 
 description        = 'An insecure Keyring backend that stores secrets in plain text.'
