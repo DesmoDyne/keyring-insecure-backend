@@ -18,12 +18,15 @@
 # NOTE: need to import entire package
 import logging
 
-from logging import basicConfig, info
+from json    import loads
+from logging import basicConfig, info, warning
 
 # https://pypi.org/project/keyring
 from keyring.backend import KeyringBackend
 # https://pypi.org/project/platformdirs
-from platformdirs    import user_config_path, user_log_path
+from platformdirs    import (user_config_path,
+                             user_data_path,
+                             user_log_path)
 # https://pypi.org/project/rich
 from rich.console    import Console
 from rich.logging    import RichHandler
@@ -31,6 +34,8 @@ from rich.logging    import RichHandler
 from yaml            import safe_load
 
 from .ConfFileModel import ConfFileModel
+
+from json import JSONDecodeError
 
 from pydantic import ValidationError
 from yaml     import YAMLError
@@ -81,28 +86,83 @@ class InsecureKeyringBackend(KeyringBackend):
         except (OSError, ValidationError, YAMLError):
             raise
 
-        info('InsecureKeyringBackend started ✅')
+        path_to_data_file = conf.path_to_data_file
+
+        message = f'load data file\n  {path_to_data_file}'
+        try:
+            data_text = path_to_data_file.read_text()
+        except OSError:
+            raise
+
+        try:
+            data_dict = loads(data_text)
+            self._logger.info(f'{message}: OK')
+        except (JSONDecodeError, UnicodeDecodeError):
+            raise
+
+        self._data_dict = data_dict
 
 
     def delete_password(self, service: str, username: str) -> None:
         """
-        TODO: doc
+        Delete password for <service> and <username>.
+
+        Args:
+            service:  Name of service; currently ignored.
+            username: Name of user; currently ignored.
+
+        Returns:
+            Does not return; always raises NotImplementedError.
+
+        Raises:
+            NotImplementedError.
         """
 
         raise NotImplementedError
 
 
-    def get_password(self, service: str, username: str) -> str:
+    def get_password(self, service: str, username: str) -> str | None:
         """
-        TODO: doc
+        Get password for <service> and <username>.
+
+        Args:
+            service:  Name of service to get password for.
+            username: Name of user; currently ignored.
+
+        Returns:
+            The password; None if no password was found.
+
+        Raises:
+            None.
         """
 
-        return 'some password'
+        info( 'get_password:\n'
+             f'  service:  {service}\n'
+             f'  username: {username} (ignored)')
+
+        try:
+            password = self._data_dict[service]
+            info(f"found password '{password}' for service '{service}'")
+        except KeyError:
+            warning(f"failed to find a password for service '{service}'")
+            return None
+
+        return password
 
 
     def set_password(self, service: str, username: str, password: str) -> None:
         """
-        TODO: doc
+        Set password for <service> and <username>.
+
+        Args:
+            service:  Name of service; currently ignored.
+            username: Name of user; currently ignored.
+
+        Returns:
+            Does not return; always raises NotImplementedError.
+
+        Raises:
+            NotImplementedError.
         """
 
         raise NotImplementedError
@@ -124,6 +184,7 @@ class InsecureKeyringBackend(KeyringBackend):
         """
 
         path_to_conf_root = user_config_path(app_name)
+        path_to_data_root = user_data_path(app_name)
         path_to_log_root  = user_log_path(app_name)
 
         path_to_conf_file = path_to_conf_root / file_name
@@ -145,7 +206,8 @@ class InsecureKeyringBackend(KeyringBackend):
         except ValidationError:
             raise
 
-        conf.path_to_log_file = path_to_log_root / conf.path_to_log_file
+        conf.path_to_data_file = path_to_data_root / conf.path_to_data_file
+        conf.path_to_log_file  = path_to_log_root  / conf.path_to_log_file
 
         return conf
 

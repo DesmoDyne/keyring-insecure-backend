@@ -15,6 +15,13 @@
 #   ${HOME}/Library/Application Support/InsecureKeyringBackend/keyring_insecure_backend.yaml
 
 
+# path to data file, relative to OS-dependent user data path;
+# Linux / Ubuntu 24.04 LTS:
+#   ${HOME}/.local/share/InsecureKeyringBackend/<path_to_data_file>
+# macOS / Sonoma 14.7:
+#   ${HOME}/Library/Application Support/InsecureKeyringBackend/<path_to_data_file>
+path_to_data_file: keyring_insecure_backend.json
+
 # path to log file, relative to OS-dependent user log path;
 # Linux / Ubuntu 24.04 LTS:
 #   ${HOME}/.local/state/InsecureKeyringBackend/log/<path_to_log_file>

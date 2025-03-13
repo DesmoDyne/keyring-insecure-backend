@@ -27,4 +27,5 @@ class ConfFileModel(BaseModel):
     """
 
     model_config = ConfigDict(extra='forbid')
+    path_to_data_file: Path
     path_to_log_file:  Path
