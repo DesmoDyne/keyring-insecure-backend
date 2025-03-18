@@ -45,9 +45,7 @@ version            = '0.0.0'
 
 
 [dependency-groups]
-dev = [
-    "ruff>=0.9.10",
-]
+dev = []
 
 
 # NOTE: this is required to make Keyring load this backend as plugin:
