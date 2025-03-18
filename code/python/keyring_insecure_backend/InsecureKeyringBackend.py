@@ -18,8 +18,7 @@
 # NOTE: need to import entire package
 import logging
 
-from json    import loads
-from logging import basicConfig, info, warning
+from json import loads
 
 # https://pypi.org/project/keyring
 from keyring.backend import KeyringBackend
@@ -146,15 +145,18 @@ class InsecureKeyringBackend(KeyringBackend):
             None.
         """
 
-        info( 'get_password:\n'
-             f'  service:  {service}\n'
-             f'  username: {username} (ignored)')
+        message = ( 'get_password:\n'
+                   f'  service:  {service}\n'
+                   f'  username: {username} (ignored)')
+        self._logger.info(message)
 
         try:
             password = self._data_dict[service]
-            info(f"found password '{password}' for service '{service}'")
+            message = f"found password '{password}' for service '{service}'"
+            self._logger.info(message)
         except KeyError:
-            warning(f"failed to find a password for service '{service}'")
+            message = f"failed to find a password for service '{service}'"
+            self._logger.warning(message)
             return None
 
         return password
@@ -252,11 +254,10 @@ class InsecureKeyringBackend(KeyringBackend):
                 raise
 
         # TODO: get these from conf
+        # TODO: use python logging configuration:
+        #   https://docs.python.org/3/library/logging.config.html
         datefmt   = '[%Y%m%d-%H%M%S]'
         log_level = 'info'
-
-        format    = '$message'
-        style     = '$'
 
         # NOTE: log file would usually be opened in a context, e.g.
         #   with open(path_to_log_file, 'a') as log_file:
@@ -270,12 +271,92 @@ class InsecureKeyringBackend(KeyringBackend):
         except OSError:
             raise
 
-        console  = Console(file = log_file)
-        handlers = [RichHandler(console = console)]
+        # NOTE: the usual way to set up logging using rich would be e.g.
+        #   from logging import basicConfig
+        #   # (more imports for rich Console, etc., see top of file)
+        #   log_file = Path('/path/to/file.log')
+        #   console  = Console(file = log_file)
+        #   handlers = [RichHandler(console = console)]
+        #   basicConfig(datefmt  = '[%Y%m%d-%H%M%S]',
+        #               format   = '$message',
+        #               handlers = handlers,
+        #               level    = 'INFO',
+        #               style    = '$')
+        # this works only as long as there is only one single backend installed
+        # for keyring that uses rich; if there are two or more, logging breaks:
+        # if for example both backends use a log file as done above, log content
+        # for the first backend is sent to the log file of the second backend;
+        # cause: both use a logger called 'rich' by default
+        # fix: _add_ a logger (and a handler) with a unique name
+        #
+        # python > display existing loggers:
+        #   https://stackoverflow.com/a/60381742
+        # import logging
+        # loggers  = [logging.getLogger()]
+        # loggers += [logging.getLogger(name)
+        #               for name in logging.root.manager.loggerDict]
+        # from pprint import pprint
+        # print('loggers:')
+        # pprint(loggers)
+        # sample log output:
+        # loggers:
+        # [<RootLogger root (WARNING)>,
+        # <Logger keyring.backend (WARNING)>,
+        # <Logger keyring (WARNING)>,
+        # <Logger keyring.core (WARNING)>,
+        # <Logger keyring.backends.SecretService (WARNING)>,
+        # <Logger keyring.backends (WARNING)>,
+        # <Logger keyring.backends.Windows (WARNING)>,
+        # <Logger keyring.backends.libsecret (WARNING)>]
+        #
+        # NOTE: it seems importing anything from rich
+        # alone already creates a logger called 'rich':
+        # from rich.pretty import pretty_repr
+        # print(f'loggers:\n{pretty_repr(loggers)}')
+        # for some reason, keyring calls this code twice at initialization;
+        # the `import pretty_repr` seems to add the logger called rich:
+        # sample log output:
+        # loggers:
+        # [
+        #     <RootLogger root (WARNING)>,
+        #     <Logger keyring.backend (WARNING)>,
+        #     <Logger keyring (WARNING)>,
+        #     <Logger keyring.core (WARNING)>,
+        #     <Logger keyring.backends.SecretService (WARNING)>,
+        #     <Logger keyring.backends (WARNING)>,
+        #     <Logger keyring.backends.Windows (WARNING)>,
+        #     <Logger keyring.backends.libsecret (WARNING)>
+        # ]
+        # loggers:
+        # [
+        #     <RootLogger root (WARNING)>,
+        #     <Logger keyring.backend (WARNING)>,
+        #     <Logger keyring (WARNING)>,
+        #     <Logger keyring.core (WARNING)>,
+        #     <Logger keyring.backends.SecretService (WARNING)>,
+        #     <Logger keyring.backends (WARNING)>,
+        #     <Logger keyring.backends.Windows (WARNING)>,
+        #     <Logger keyring.backends.libsecret (WARNING)>,
+        #     <Logger rich (WARNING)>
+        # ]
+
         # NOTE: this requires importing entire package using `import logging`
-        level    = getattr(logging, log_level.upper())
-        basicConfig(datefmt  = datefmt,
-                    format   = format,
-                    handlers = handlers,
-                    level    = level,
-                    style    = style)
+        level   = getattr(logging, log_level.upper())
+
+        # TODO: really set log level in both handler and logger ?
+        console = Console(file = log_file)
+        handler = RichHandler(console         = console,
+                              level           = level,
+                              log_time_format = datefmt)
+
+        # TODO: get this from conf
+        logger_name = 'keyring.backends.InsecureKeyringBackend'
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(level)
+
+        # NOTE: keyring calls this code twice;
+        # add a handler only if required: once
+        if not logger.hasHandlers():
+            logger.addHandler(handler)
+
+        self._logger = logger
