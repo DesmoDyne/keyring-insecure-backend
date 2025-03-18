@@ -46,8 +46,18 @@ class InsecureKeyringBackend(KeyringBackend):
     An insecure Keyring backend that stores secrets in plain text.
     """
 
-    # TODO: doc
-    priority = 30
+    # backend priority; see base class
+    #   https://github.com/jaraco/keyring/blob/main/keyring/backend.py#L74
+    #
+    # TODO: implementing this without typing issues
+    # requires importing / using custom property class:
+    #   from keyring.compat import properties
+    #   @properties.classproperty
+    #   def priority(self) -> float:
+    #       return 30
+    #
+    # TODO: review supressed pyright issues
+    priority = 30                      # pyright: ignore[reportAssignmentType]
 
 
     # name of this application, used to determine local user folders:
