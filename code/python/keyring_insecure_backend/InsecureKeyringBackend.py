@@ -15,12 +15,10 @@
 # TODO: review exception handling, establish / align with conv
 
 
-# NOTE: need to import entire package
-import logging
-
 from json           import loads
+from logging        import Logger, getLogger
 from logging.config import dictConfig
-from typing         import Dict
+from typing         import Dict, Optional
 
 # https://pypi.org/project/keyring
 from keyring.backend import KeyringBackend
@@ -80,7 +78,11 @@ class InsecureKeyringBackend(KeyringBackend):
             None.
 
         Raises:
-            OSError, ValidationError, YAMLError.
+            JSONDecodeError,
+            OSError,
+            UnicodeDecodeError,
+            ValidationError,
+            YAMLError.
         """
 
         # NOTE: keyring doesn't seem to do any proper exception handling:
@@ -90,27 +92,20 @@ class InsecureKeyringBackend(KeyringBackend):
 
         super().__init__()
 
-        try:
-            conf = self._proc_conf(self._application_name, self._conf_file_name)
-            self._set_up_logging(conf)
-        except (OSError, ValidationError, YAMLError):
-            raise
-
-        path_to_data_file = conf.path_to_data_file
-
-        message = f'load data file\n  {path_to_data_file}'
-        try:
-            data_text = path_to_data_file.read_text()
-        except OSError:
-            raise
+        self._conf:    Optional[ConfFileModel]     = None
+        self._logger:  Optional[Logger]            = None
+        self._secrets: Optional[Dict[str, str]]    = None
 
         try:
-            data_dict = loads(data_text)
-            self._logger.info(f'{message}: OK')
-        except (JSONDecodeError, UnicodeDecodeError):
+            self._proc_conf(self._application_name, self._conf_file_name)
+            self._set_up_logging()
+            self._set_up_secrets()
+        except (JSONDecodeError,
+                OSError,
+                UnicodeDecodeError,
+                ValidationError,
+                YAMLError):
             raise
-
-        self._data_dict = data_dict
 
 
     def delete_password(self, service: str, username: str) -> None:
@@ -146,18 +141,25 @@ class InsecureKeyringBackend(KeyringBackend):
             None.
         """
 
+        # fix pyright issue
+        if not self._secrets:
+            return
+
         message = ( 'get_password:\n'
                    f'  service:  {service}\n'
                    f'  username: {username} (ignored)')
-        self._logger.info(message)
+        if self._logger:
+            self._logger.info(message)
 
         try:
-            password = self._data_dict[service]
+            password = self._secrets[service]
             message = f"found password '{password}' for service '{service}'"
-            self._logger.info(message)
+            if self._logger:
+                self._logger.info(message)
         except KeyError:
             message = f"failed to find a password for service '{service}'"
-            self._logger.warning(message)
+            if self._logger:
+                self._logger.warning(message)
             return None
 
         return password
@@ -181,7 +183,7 @@ class InsecureKeyringBackend(KeyringBackend):
         raise NotImplementedError
 
 
-    def _proc_conf(self, app_name: str, file_name: str) -> ConfFileModel:
+    def _proc_conf(self, app_name: str, file_name: str) -> None:
         """
         Load configuration file and prepare configuration for use.
 
@@ -190,7 +192,7 @@ class InsecureKeyringBackend(KeyringBackend):
             file_name: Name of configuration file.
 
         Returns:
-            A ConfFileModel configuration object.
+            None.
 
         Raises:
             OSError, ValidationError, YAMLError.
@@ -228,15 +230,15 @@ class InsecureKeyringBackend(KeyringBackend):
                     console_conf.path_to_file \
                      = path_to_log_root / console_conf.path_to_file
 
-        return conf
+        self._conf = conf
 
 
-    def _set_up_logging(self, conf: ConfFileModel) -> None:
+    def _set_up_logging(self) -> None:
         """
-        Set up logging to file configured in configuration file.
+        Set up logging as configured in configuration file.
 
         Args:
-            conf: A ConfFileModel configuration object.
+            None.
 
         Returns:
             None.
@@ -358,9 +360,15 @@ class InsecureKeyringBackend(KeyringBackend):
         #     }
         # }
 
+        # fix pyright issue
+        if not self._conf:
+            return
+
+        # TODO: access conf only once at a single location
+
         # for each console configured to write to log file:
         # prepare file and create a Console object
-        console_confs = conf.logging.consoles
+        console_confs = self._conf.logging.consoles
         # dict with console IDs as keys and Console objects as values
         consoles: Dict[str, Console] = {}
 
@@ -406,7 +414,7 @@ class InsecureKeyringBackend(KeyringBackend):
         # --> turn pydantic conf data model instance into dict and modify that
         # NOTE: pass by_alias to use e.g. class, not class_:
         #   https://stackoverflow.com/a/70584815
-        logging_conf  = conf.logging.model_dump(by_alias = True)
+        logging_conf  = self._conf.logging.model_dump(by_alias = True)
         handler_confs = logging_conf['handlers']
 
         if handler_confs:
@@ -435,6 +443,54 @@ class InsecureKeyringBackend(KeyringBackend):
         except (AttributeError, ImportError, TypeError, ValueError):
             raise
 
-        # TODO: how to determine which logger to use ?
-        logger_name = 'keyring.backends.InsecureKeyringBackend'
-        self._logger = logging.getLogger(logger_name)
+        logger_confs = self._conf.logging.loggers
+
+        if logger_confs:
+            if len(logger_confs) > 1:
+                message = ( 'WARNING: found more than one logger configurations; '
+                           f'using the first one, ignoring all others')
+                print(message)
+
+            logger_name = list(logger_confs.keys())[0]
+            self._logger = getLogger(logger_name)
+
+        else:
+            message = ( 'WARNING: failed to find any logger configurations; '
+                       f'logging disabled')
+            print(message)
+
+
+    def _set_up_secrets(self) -> None:
+        """
+        Set up service : password dict.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            JSONDecodeError, OSError, UnicodeDecodeError.
+        """
+
+        # fix pyright issue
+        if not self._conf:
+            return
+
+        path_to_data_file = self._conf.path_to_data_file
+
+        message = f'load data file\n  {path_to_data_file}'
+        try:
+            data_text = path_to_data_file.read_text()
+        except OSError:
+            raise
+
+        try:
+            data_dict = loads(data_text)
+            if self._logger:
+                self._logger.info(f'{message}: OK')
+        except (JSONDecodeError, UnicodeDecodeError):
+            raise
+
+        self._secrets = data_dict
