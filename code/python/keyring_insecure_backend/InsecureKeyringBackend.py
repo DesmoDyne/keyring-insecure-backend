@@ -18,7 +18,8 @@
 # NOTE: need to import entire package
 import logging
 
-from json import loads
+from json           import loads
+from logging.config import dictConfig
 
 # https://pypi.org/project/keyring
 from keyring.backend import KeyringBackend
@@ -238,6 +239,53 @@ class InsecureKeyringBackend(KeyringBackend):
             OSError.
         """
 
+        # from rich.pretty import pretty_repr
+        # log_conf = pretty_repr(conf.logging.model_dump(by_alias = True))
+        # print(f'conf.logging:\n{log_conf}')
+        # sample log output:
+        # conf.logging:
+        # {
+        #     'version': 1,
+        #     'formatters': {},
+        #     'filters': {},
+        #     'handlers': {
+        #         'rich': {
+        #             'class': 'rich.logging.RichHandler',
+        #             'filters': None,
+        #             'formatter': None,
+        #             'level': 'INFO',
+        #             'log_time_format': '[%Y%m%d-%H%M%S]'
+        #         }
+        #     },
+        #     'loggers': {
+        #         'keyring.backends.InsecureKeyringBackend': {
+        #             'filters': None,
+        #             'handlers': ['rich'],
+        #             'level': 'INFO',
+        #             'propagate': None
+        #         }
+        #     },
+        #     'root': None,
+        #     'incremental': None,
+        #     'disable_existing_loggers': None
+        # }
+
+        # python > logging > Configuring Logging:
+        #   https://docs.python.org/3/howto/logging.html#configuring-logging
+        #   https://docs.python.org/3/library/ ...
+        #    ... logging.config.html#logging.config.dictConfig
+        try:
+            # NOTE: pass by_alias to use e.g. class, not class_:
+            #   https://stackoverflow.com/a/70584815
+            dictConfig(conf.logging.model_dump(by_alias = True))
+        except (AttributeError, ImportError, TypeError, ValueError):
+            raise
+
+        logger_name = 'keyring.backends.InsecureKeyringBackend'
+        self._logger = logging.getLogger(logger_name)
+
+        return
+
         # rich > log to file:
         #   https://rich.readthedocs.io/en/stable/console.html#file-output
         #
@@ -252,12 +300,6 @@ class InsecureKeyringBackend(KeyringBackend):
                 path_to_log_file.parent.mkdir(parents=True)
             except OSError:
                 raise
-
-        # TODO: get these from conf
-        # TODO: use python logging configuration:
-        #   https://docs.python.org/3/library/logging.config.html
-        datefmt   = '[%Y%m%d-%H%M%S]'
-        log_level = 'info'
 
         # NOTE: log file would usually be opened in a context, e.g.
         #   with open(path_to_log_file, 'a') as log_file:

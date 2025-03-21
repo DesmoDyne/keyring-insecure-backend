@@ -15,6 +15,23 @@
 #   ${HOME}/Library/Application Support/InsecureKeyringBackend/keyring_insecure_backend.yaml
 
 
+# logging configuration:
+#   https://docs.python.org/3/library/logging.config.html
+logging:
+  version:     1
+  handlers:
+    rich:
+      class:   rich.logging.RichHandler
+      level:   INFO
+      # rich.logging.RichHandler configuration attributes:
+      #   https://rich.readthedocs.io/en/stable/reference/logging.html#logging
+      log_time_format:     '[%Y%m%d-%H%M%S]'
+  loggers:
+    keyring.backends.InsecureKeyringBackend:
+      handlers:
+      - rich
+      level:   INFO
+
 # path to data file, relative to OS-dependent user data path;
 # Linux / Ubuntu 24.04 LTS:
 #   ${HOME}/.local/share/InsecureKeyringBackend/<path_to_data_file>

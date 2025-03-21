@@ -17,6 +17,8 @@ from pathlib import Path
 # https://pypi.org/project/pydantic
 from pydantic import BaseModel, ConfigDict
 
+from .ConfLoggingModel import ConfLoggingModel
+
 
 # -----------------------------------------------------------------------------
 # public types
@@ -27,5 +29,6 @@ class ConfFileModel(BaseModel):
     """
 
     model_config = ConfigDict(extra='forbid')
+    logging:           ConfLoggingModel
     path_to_data_file: Path
     path_to_log_file:  Path
