@@ -20,6 +20,7 @@ import logging
 
 from json           import loads
 from logging.config import dictConfig
+from typing         import Dict
 
 # https://pypi.org/project/keyring
 from keyring.backend import KeyringBackend
@@ -29,7 +30,6 @@ from platformdirs    import (user_config_path,
                              user_log_path)
 # https://pypi.org/project/rich
 from rich.console    import Console
-from rich.logging    import RichHandler
 # https://pypi.org/project/PyYAML
 from yaml            import safe_load
 
@@ -245,50 +245,13 @@ class InsecureKeyringBackend(KeyringBackend):
             OSError.
         """
 
-
-        # python > logging > Configuring Logging:
-        #   https://docs.python.org/3/howto/logging.html#configuring-logging
-        #   https://docs.python.org/3/library/ ...
-        #    ... logging.config.html#logging.config.dictConfig
-        try:
-            # NOTE: pass by_alias to use e.g. class, not class_:
-            #   https://stackoverflow.com/a/70584815
-            dictConfig(conf.logging.model_dump(by_alias = True))
-        except (AttributeError, ImportError, TypeError, ValueError):
-            raise
-
-        logger_name = 'keyring.backends.InsecureKeyringBackend'
-        self._logger = logging.getLogger(logger_name)
-
-        return
-
         # rich > log to file:
         #   https://rich.readthedocs.io/en/stable/console.html#file-output
         #
         # NOTE: truncate log file during development:
         #   https://stackoverflow.com/a/13576390
         # $ > ~/Library/Logs/InsecureKeyringBackend/keyring_insecure_backend.log
-
-        path_to_log_file = conf.path_to_log_file
-
-        if not path_to_log_file.parent.exists():
-            try:
-                path_to_log_file.parent.mkdir(parents=True)
-            except OSError:
-                raise
-
-        # NOTE: log file would usually be opened in a context, e.g.
-        #   with open(path_to_log_file, 'a') as log_file:
-        # and code up to the basicConfig(...) call would indented;
-        # however, this fails upon the first info(...) call with
-        #   ValueError: I/O operation on closed file.
-        # TODO: close file upon exit
-
-        try:
-            log_file = open(path_to_log_file, 'a')
-        except OSError:
-            raise
-
+        #
         # NOTE: the usual way to set up logging using rich would be e.g.
         #   from logging import basicConfig
         #   # (more imports for rich Console, etc., see top of file)
@@ -358,8 +321,6 @@ class InsecureKeyringBackend(KeyringBackend):
         #     <Logger rich (WARNING)>
         # ]
 
-        # NOTE: this requires importing entire package using `import logging`
-        level   = getattr(logging, log_level.upper())
         # from rich.pretty import pretty_repr
         # log_conf = pretty_repr(conf.logging.model_dump(by_alias = True))
         # print(f'conf.logging:\n{log_conf}')
@@ -397,20 +358,83 @@ class InsecureKeyringBackend(KeyringBackend):
         #     }
         # }
 
-        # TODO: really set log level in both handler and logger ?
-        console = Console(file = log_file)
-        handler = RichHandler(console         = console,
-                              level           = level,
-                              log_time_format = datefmt)
+        # for each console configured to write to log file:
+        # prepare file and create a Console object
+        console_confs = conf.logging.consoles
+        # dict with console IDs as keys and Console objects as values
+        consoles: Dict[str, Console] = {}
 
-        # TODO: get this from conf
+        if console_confs:
+            for console_id, console_conf in console_confs.items():
+                path_to_file = console_conf.path_to_file
+                if path_to_file:
+                    if not path_to_file.parent.exists():
+                        try:
+                            path_to_file.parent.mkdir(parents=True)
+                        except OSError:
+                            raise
+
+                    # NOTE: log file would usually be opened in a context:
+                    #   with open(path_to_log_file, 'a') as log_file:
+                    #    ...
+                    # but this fails upon the first logging call with
+                    #   ValueError: I/O operation on closed file.
+                    # --> open file conventionally / old school
+                    # TODO: close file upon exit
+                    try:
+                        log_file = open(path_to_file, 'a')
+                    except OSError:
+                        raise
+
+                    # TODO: pass remaing conf in Console(...) call
+                    consoles[console_id] = Console(file = log_file)
+
+
+        # for each handler configured to use a console:
+        # in handler conf, replace console id by Console object
+        #
+        # NOTE: strictly speaking, this approach mixes configuration and objects
+        # - but it drastically simplifies configuring logging: the alternative
+        # would be to call dictConfig(...) first and then - afterwards - update
+        # handlers that log to a file with the rich Console, i.e. remove them
+        # from logging, create new objects, re-add those, etc. pp.
+        # NOTE: can not modify handler conf in place: pydantic defines console
+        # attribute data type as str, setting it to Console object fails with
+        # UserWarning: Pydantic serializer warnings:
+        # Expected `str` but got `Console` with value `<console width=160 None>`
+        #  - serialized value may not be as expected
+        # --> turn pydantic conf data model instance into dict and modify that
+        # NOTE: pass by_alias to use e.g. class, not class_:
+        #   https://stackoverflow.com/a/70584815
+        logging_conf  = conf.logging.model_dump(by_alias = True)
+        handler_confs = logging_conf['handlers']
+
+        if handler_confs:
+            for handler_id, handler_conf in handler_confs.items():
+                # console_id = handler_conf.console
+                console_id = handler_conf['console']
+                if console_id:
+                    try:
+                        console = consoles[console_id]
+                    except KeyError:
+                        message = ( 'failed to find a configuration '
+                                   f"for a console with ID '{console_id}' "
+                                   f"used by handler with ID '{handler_id}'")
+                        raise RuntimeError(message)
+
+                    # replace console id by console object
+                    handler_conf['console'] = console
+
+
+        # python > logging > Configuring Logging:
+        #   https://docs.python.org/3/howto/logging.html#configuring-logging
+        #   https://docs.python.org/3/library/ ...
+        #    ... logging.config.html#logging.config.dictConfig
+        try:
+            dictConfig(logging_conf)
+        except (AttributeError, ImportError, TypeError, ValueError):
+            raise
+
+        # TODO: how to determine which logger to use ?
         logger_name = 'keyring.backends.InsecureKeyringBackend'
-        logger = logging.getLogger(logger_name)
-        logger.setLevel(level)
-
-        # NOTE: keyring calls this code twice;
-        # add a handler only if required: once
-        if not logger.hasHandlers():
-            logger.addHandler(handler)
-
-        self._logger = logger
+        self._logger = logging.getLogger(logger_name)
