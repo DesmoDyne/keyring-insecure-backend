@@ -220,7 +220,13 @@ class InsecureKeyringBackend(KeyringBackend):
             raise
 
         conf.path_to_data_file = path_to_data_root / conf.path_to_data_file
-        conf.path_to_log_file  = path_to_log_root  / conf.path_to_log_file
+
+        console_confs = conf.logging.consoles
+        if console_confs:
+            for console_conf in console_confs.values():
+                if console_conf.path_to_file:
+                    console_conf.path_to_file \
+                     = path_to_log_root / console_conf.path_to_file
 
         return conf
 
