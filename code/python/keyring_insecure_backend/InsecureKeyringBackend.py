@@ -239,36 +239,6 @@ class InsecureKeyringBackend(KeyringBackend):
             OSError.
         """
 
-        # from rich.pretty import pretty_repr
-        # log_conf = pretty_repr(conf.logging.model_dump(by_alias = True))
-        # print(f'conf.logging:\n{log_conf}')
-        # sample log output:
-        # conf.logging:
-        # {
-        #     'version': 1,
-        #     'formatters': {},
-        #     'filters': {},
-        #     'handlers': {
-        #         'rich': {
-        #             'class': 'rich.logging.RichHandler',
-        #             'filters': None,
-        #             'formatter': None,
-        #             'level': 'INFO',
-        #             'log_time_format': '[%Y%m%d-%H%M%S]'
-        #         }
-        #     },
-        #     'loggers': {
-        #         'keyring.backends.InsecureKeyringBackend': {
-        #             'filters': None,
-        #             'handlers': ['rich'],
-        #             'level': 'INFO',
-        #             'propagate': None
-        #         }
-        #     },
-        #     'root': None,
-        #     'incremental': None,
-        #     'disable_existing_loggers': None
-        # }
 
         # python > logging > Configuring Logging:
         #   https://docs.python.org/3/howto/logging.html#configuring-logging
@@ -384,6 +354,42 @@ class InsecureKeyringBackend(KeyringBackend):
 
         # NOTE: this requires importing entire package using `import logging`
         level   = getattr(logging, log_level.upper())
+        # from rich.pretty import pretty_repr
+        # log_conf = pretty_repr(conf.logging.model_dump(by_alias = True))
+        # print(f'conf.logging:\n{log_conf}')
+        # sample log output:
+        # conf.logging:
+        # {
+        #     'version': 1,
+        #     'formatters': {},
+        #     'filters': {},
+        #     'handlers': {
+        #         'rich': {
+        #             'class': 'rich.logging.RichHandler',
+        #             'filters': None,
+        #             'formatter': None,
+        #             'level': 'INFO',
+        #             'console': 'rich',
+        #             'log_time_format': '[%Y%m%d-%H%M%S]'
+        #         }
+        #     },
+        #     'loggers': {
+        #         'keyring.backends.InsecureKeyringBackend': {
+        #             'filters': None,
+        #             'handlers': ['rich'],
+        #             'level': 'INFO',
+        #             'propagate': None
+        #         }
+        #     },
+        #     'root': None,
+        #     'incremental': None,
+        #     'disable_existing_loggers': None,
+        #     'consoles': {
+        #         'rich': {
+        #             'path_to_file': PosixPath('/Users/ssc/Library/Logs/InsecureKeyringBackend/keyring_insecure_backend.log')
+        #         }
+        #     }
+        # }
 
         # TODO: really set log level in both handler and logger ?
         console = Console(file = log_file)
