@@ -8,15 +8,25 @@
 # created : 2025-03-23
 
 
-# see ./build.yaml
+# Publishing a Python Package from GitHub to PyPI in 2024:
+#   https://medium.com/@blackary/ ...
+#    ... publishing-a-python-package-from-github-to-pypi-in-2024-a6fb8635d45d
+# configuration in here adapted from "Step 3"
 
 
 name: Publish
-on:   [push]
+on:
+  release:
+    types: [created]
 
 jobs:
   publish:
+    environment:
+      name: pypi
+      url:  https://pypi.org/p/keyring-insecure-backend
     name: publish
+    permissions:
+      id-token: write
     runs-on: ubuntu-latest
 
     steps:
@@ -33,5 +43,43 @@ jobs:
         with:
           python-version-file: code/python/pyproject.toml
 
-      - name: Run `uv publish`
-        run: uv publish --directory code/python
+      # NOTE: these two jobs don't agree on where the package is built:
+      #  + `uv build` out of the box builds package in .../code/python/dist
+      #  + `gh-action-pypi-publish` action fails with error message
+      #       No such file or directory: '/github/workspace/dist'
+      # two options:
+      #  1. in `uv build` call, add `--out-dir`:
+      #       https://docs.astral.sh/uv/reference/cli/#uv-build--out-dir
+      #  2. in `gh-action-pypi-publish` action, configure `packages-dir`:
+      #       https://github.com/marketplace/actions/pypi-publish ...
+      #        ... #customizing-target-package-dists-directory, e.g.
+      #       with:
+      #         packages-dir: code/python/dist
+      # --> use first option so only one job requires customizing
+      # TODO: don't run `uv build` here again, but set up artifact in build job
+
+      - name: Run `uv build`
+        run: uv build --directory code/python --out-dir /github/workspace/dist
+
+      # TODO: from the GitHub action log:
+      #   Checking code/python/dist/keyring_insecure_backend-0.0.1-py3-none-any.whl: PASSED with warnings
+      #   WARNING  `long_description_content_type` missing. defaulting to `text/x-rst`.
+      #   WARNING  `long_description` missing.
+      #   Checking code/python/dist/keyring_insecure_backend-0.0.1.tar.gz: PASSED with warnings
+      #   WARNING  `long_description_content_type` missing. defaulting to `text/x-rst`.
+      #   WARNING  `long_description` missing.
+      # also, from https://pypi.org/project/keyring-insecure-backend:
+      #   The author of this package has not provided a project description
+      # --> `long_description` was supported in `setup.py` (or `setup.cfg`):
+      #        https://github.com/pypi/warehouse/issues/4036
+      #        https://packaging.python.org/en/latest/guides/ ...
+      #         ... making-a-pypi-friendly-readme/#including- ...
+      #         ... your-readme-in-your-package-s-metadata
+      #        https://stackoverflow.com/a/58062850
+      #        https://github.com/pypa/packaging.python.org/ ...
+      #         ... issues/1535#issuecomment-2072711593
+      #     but is not supported in pyproject.toml 🤦🏻‍♂️
+      #     python packaging is just a sad laughing stock 😞
+      # TODO: see e.g. https://pypi.org/project/uv for possible project info
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
