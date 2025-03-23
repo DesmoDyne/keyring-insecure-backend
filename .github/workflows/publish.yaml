@@ -8,15 +8,24 @@
 # created : 2025-03-23
 
 
-# see ./build.yaml
+# taken from "Step 3" at
+#   https://medium.com/@blackary/ ...
+#    ... publishing-a-python-package-from-github-to-pypi-in-2024-a6fb8635d45d
 
 
 name: Publish
-on:   [push]
+on:
+  release:
+    types: [created]
 
 jobs:
   publish:
+    environment:
+      name: pypi
+      url:  https://pypi.org/p/keyring-insecure-backend
     name: publish
+    permissions:
+      id-token: write
     runs-on: ubuntu-latest
 
     steps:
@@ -33,5 +42,8 @@ jobs:
         with:
           python-version-file: code/python/pyproject.toml
 
-      - name: Run `uv publish`
-        run: uv publish --directory code/python
+      - name: Run `uv build`
+        run: uv build --directory code/python
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
