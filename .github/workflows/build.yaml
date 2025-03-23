@@ -1,0 +1,38 @@
+---
+# build.yaml
+#
+# GitHub Action Build Workflow CI/CD configuration.
+#
+# author  : stefan schablowski
+# contact : stefan.schablowski@desmodyne.com
+# created : 2025-03-23
+
+
+# uv > Using uv in GitHub Actions:
+#   https://docs.astral.sh/uv/guides/integration/github
+
+
+name: Build
+on:   [push]
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: 0.6.9
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: code/python/pyproject.toml
+
+      - name: Run `uv build`
+        run: uv build --directory code/python

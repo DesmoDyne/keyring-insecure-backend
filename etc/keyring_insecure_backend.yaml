@@ -1,0 +1,54 @@
+---
+# keyring_insecure_backend.yaml
+#
+# Insecure Keyring Backend configuration.
+#
+# author  : stefan schablowski
+# contact : stefan.schablowski@desmodyne.com
+# created : 2025-03-11
+
+
+# NOTE: this configuration file is expected at an OS-dependent user conf path;
+# Linux / Ubuntu 24.04 LTS:
+#   ${HOME}/.config/InsecureKeyringBackend/keyring_insecure_backend.yaml
+# macOS / Sonoma 14.7:
+#   ${HOME}/Library/Application Support/InsecureKeyringBackend/keyring_insecure_backend.yaml
+
+
+# logging configuration:
+#   https://docs.python.org/3/library/logging.config.html
+# NOTE: the model for this conf follows the python logging conf,
+# but is extended to support configuring rich logging to file:
+#   .../code/python/keyring_insecure_backend/ConfRichLoggingModel.py
+logging:
+  version:     1
+  consoles:
+    rich:
+      # path to log file, relative to OS-dependent user log path;
+      # Linux / Ubuntu 24.04 LTS:
+      #   ${HOME}/.local/state/InsecureKeyringBackend/log/<path_to_log_file>
+      # macOS / Sonoma 14.7:
+      #   ${HOME}/Library/Logs/InsecureKeyringBackend/<path_to_log_file>
+      path_to_file:        keyring_insecure_backend.log
+  # TODO: really set log level in both handler and logger ?
+  handlers:
+    rich:
+      class:   rich.logging.RichHandler
+      level:   INFO
+      # rich.logging.RichHandler configuration attributes:
+      #   https://rich.readthedocs.io/en/stable/reference/logging.html#logging
+      log_time_format:     '[%Y%m%d-%H%M%S]'
+      # ConfRichHandlerModel configuration attributes
+      console: rich
+  loggers:
+    keyring.backends.InsecureKeyringBackend:
+      handlers:
+      - rich
+      level:   INFO
+
+# path to data file, relative to OS-dependent user data path;
+# Linux / Ubuntu 24.04 LTS:
+#   ${HOME}/.local/share/InsecureKeyringBackend/<path_to_data_file>
+# macOS / Sonoma 14.7:
+#   ${HOME}/Library/Application Support/InsecureKeyringBackend/<path_to_data_file>
+path_to_data_file: keyring_insecure_backend.json
