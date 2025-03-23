@@ -1,22 +1,23 @@
 ---
-# sync.yaml
+# build.yaml
 #
-# GitHub Action Sync Workflow CI/CD configuration.
+# GitHub Action Build Workflow CI/CD configuration.
 #
 # author  : stefan schablowski
 # contact : stefan.schablowski@desmodyne.com
 # created : 2025-03-23
 
 
-# see ./build.yaml
+# uv > Using uv in GitHub Actions:
+#   https://docs.astral.sh/uv/guides/integration/github
 
 
-name: Sync
+name: Build
 on:   [push]
 
 jobs:
-  sync:
-    name: sync
+  build:
+    name: build
     runs-on: ubuntu-latest
 
     steps:
@@ -33,5 +34,5 @@ jobs:
         with:
           python-version-file: code/python/pyproject.toml
 
-      - name: Run `uv sync`
-        run: uv sync --directory code/python
+      - name: Run `uv build`
+        run: uv build --directory code/python
