@@ -1,0 +1,51 @@
+// settings.json
+//
+// Visual Studio Code workspace settings
+//
+// author  : stefan schablowski
+// contact : stefan.schablowski@desmodyne.com
+// created : 2021-09-25
+
+
+// NOTE: file suffix says .json, but actual file format is some proprietary
+// Microsoft mess: mostly a json file, but with JavaScript-style (?) comments;
+// can't be read/modified or even displayed properly by regular json tools :-/
+
+// NOTE: VS Code user ./. workspace settings:
+// + user settings are stored in
+//     $HOME/Library/Application Support/Code/User/settings.json
+// + workspace settings are stored in
+//     .../.vscode/settings.json
+// + workspace settings take precedence over user settings:
+//   https://code.visualstudio.com/docs/getstarted/settings#_settings-precedence
+//
+// TODO: review VS Code settings, move from user to workspace settings
+// TODO: review VS Code analysis / linting / etc. settings:
+//   https://code.visualstudio.com/docs/python/settings-reference
+
+
+{
+  // make auto indentation less dumb
+  "editor.autoIndent": "advanced",
+  // display a vertical line at 80 characters
+  "editor.rulers":     [ 80 ],
+
+  // remove trailing whitespace upon saving files
+  "files.trimTrailingWhitespace": true,
+
+  // pylance > pyright settings
+  "python.analysis.diagnosticMode":   "workspace",
+  "python.analysis.exclude": [
+    "attic",
+    "code/python/.venv",
+    "doc/python/.venv",
+    "tmp"
+  ],
+  "python.analysis.typeCheckingMode": "strict",
+
+  // NOTE: one single argument is probably not worth creating a shell frontend
+  "shellcheck.customArgs": [
+    "--enable=all",
+    "-x"
+  ]
+}

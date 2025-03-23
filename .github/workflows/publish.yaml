@@ -1,0 +1,127 @@
+---
+# publish.yaml
+#
+# GitHub Action Publish Workflow CI/CD configuration.
+#
+# author  : stefan schablowski
+# contact : stefan.schablowski@desmodyne.com
+# created : 2025-03-23
+
+
+# Publishing a Python Package from GitHub to PyPI in 2024:
+#   https://medium.com/@blackary/ ...
+#    ... publishing-a-python-package-from-github-to-pypi-in-2024-a6fb8635d45d
+# configuration in here adapted from "Step 3"
+
+
+name: Publish
+on:
+  release:
+    types: [created]
+
+jobs:
+  publish:
+    environment:
+      name: pypi
+      url:  https://pypi.org/p/keyring-insecure-backend
+    name: publish
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: 0.6.9
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: code/python/pyproject.toml
+
+      # NOTE: these two jobs don't agree on where the package is built:
+      #  + `uv build` out of the box builds package in .../code/python/dist
+      #  + `gh-action-pypi-publish` action fails with error message
+      #       No such file or directory: '/github/workspace/dist'
+      #    so ostensibly, expects package there
+      #  + attempting to adapt `uv build` to action fails with
+      #      failed to create directory `/github/workspace/dist`:
+      #        Permission denied
+      # --> enforce corporate convention `.../tmp/artifacts` unto both:
+      #  1. in `uv build` call, add `--out-dir`:
+      #       https://docs.astral.sh/uv/reference/cli/#uv-build--out-dir
+      #  2. in `gh-action-pypi-publish` action, configure `packages-dir`:
+      #       https://github.com/marketplace/actions/pypi-publish ...
+      #        ... #customizing-target-package-dists-directory
+      #     --> unfortunately, `pypi-publish` docs are as sloppy as pretty much
+      #         anything around PyPI (or python packaging as a whole):
+      #         is `custom-dir/` absolute ? or relative ? (if so, to what ?)
+      # TODO: don't run `uv build` here again, but set up artifact in build job
+      - name: Run `uv build`
+        # TODO: this fails due to GitHub action failure, see below
+        # run: uv build --directory code/python --out-dir tmp/artifacts
+        run: uv build --directory code/python
+
+      # TODO: from the GitHub action log:
+      #   Checking tmp/artifacts/dist/keyring_insecure_backend-0.0.1-py3-none-any.whl: PASSED with warnings
+      #   WARNING  `long_description_content_type` missing. defaulting to `text/x-rst`.
+      #   WARNING  `long_description` missing.
+      #   Checking tmp/artifacts/dist/keyring_insecure_backend-0.0.1.tar.gz: PASSED with warnings
+      #   WARNING  `long_description_content_type` missing. defaulting to `text/x-rst`.
+      #   WARNING  `long_description` missing.
+      # also, from https://pypi.org/project/keyring-insecure-backend:
+      #   The author of this package has not provided a project description
+      # --> `long_description` was supported in `setup.py` (or `setup.cfg`):
+      #        https://github.com/pypi/warehouse/issues/4036
+      #        https://packaging.python.org/en/latest/guides/ ...
+      #         ... making-a-pypi-friendly-readme/#including- ...
+      #         ... your-readme-in-your-package-s-metadata
+      #        https://stackoverflow.com/a/58062850
+      #        https://github.com/pypa/packaging.python.org/ ...
+      #         ... issues/1535#issuecomment-2072711593
+      #     but is not supported in pyproject.toml 🤦🏻‍♂️
+      #     python packaging is just a sad laughing stock 😞
+      # TODO: see e.g. https://pypi.org/project/uv for possible project info
+      # TODO: get rid of this action, use `uv publish` instead:
+      #   https://docs.astral.sh/uv/guides/package/#publishing-your-package
+      # TODO: uploading fails - even if package was deleted - with
+      #   Uploading distributions to https://upload.pypi.org/legacy/
+      #   Uploading keyring_insecure_backend-0.0.1-py3-none-any.whl
+      #   WARNING  Error during upload. Retry with the --verbose option for more details.
+      #   ERROR    HTTPError: 400 Bad Request from https://upload.pypi.org/legacy/
+      #           This filename has already been used, use a different version. See
+      #           https://pypi.org/help/#file-name-reuse for more information.
+      # this is not even a bug, this is actually by design:
+      #   https://pypi.org/help/#file-name-reuse
+      # it takes an IQ of 40 to peel a banana - and 10 for a PyPI developer 🤦🏻‍♂️
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # NOTE: assuming GitHub follow similar conventions and trying
+        #   with:
+        #     packages-dir: tmp/artifacts
+        # fails with
+        #   No such file or directory: '/github/workspace/tmp/artifacts'
+        # apparently, this action assumes `packages-dir` relative to
+        # some folder `/github/workspace` (wherever that comes from 🤷🏻‍♂️)
+        # --> prepend github.workspace to configure absolute path:
+        #       https://docs.github.com/en/actions/writing-workflows/ ...
+        #        ... choosing-what-your-workflow-does/accessing- ...
+        #        ... contextual-information-about-workflow-runs
+        # NOTE: it takes a special kind of stupidity to create a long article
+        # and manage to hide the core info anyone reading it actually needs;
+        # syntax in GitHub action to reference context variables:
+        #   https://github.com/actions/runner-images/ ...
+        #    ... issues/1794#issuecomment-707217728
+        with:
+          # TODO: this should enforce tmp/artifacts for both `uv build`
+          # and this action, but for some reason, this fails with
+          #   [Errno 2] No such file or directory: '/github/workspace/tmp/artifacts'
+          #     ...
+          #   InvalidDistribution: Cannot find file (or expand pattern):
+          #     '/github/workspace/tmp/artifacts/*'
+          # packages-dir: ${{ github.workspace }}/tmp/artifacts
+          packages-dir: code/python/dist
