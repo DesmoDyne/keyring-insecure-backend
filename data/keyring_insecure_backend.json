@@ -1,4 +1,6 @@
 {
-    "https://gitlab.com/api/v4/projects/67672163/packages/pypi": "gldt-f5cdihjCHbJwvNhcTabz",
-    "https://gitlab.com/api/v4/projects/67685669/packages/pypi": "gldt-pUesAqQG4Nvaw5oUyNC3"
+    "https://gitlab.com/api/v4/projects/67672163/packages/pypi/files/613e63a34f4680f53ba6cf12da6e4f850c3deacf4f7492757f70beda199a651d/uv_mre_01_dep_01-0.0.0.tar.gz": "gldt-f5cdihjCHbJwvNhcTabz",
+    "https://gitlab.com/api/v4/projects/67672163/packages/pypi/simple/uv-mre-01-dep-01/": "gldt-f5cdihjCHbJwvNhcTabz",
+    "https://gitlab.com/api/v4/projects/67685669/packages/pypi/files/092c2620f60e53cdd2431735c4fb0593ffc187b8a19599af09e8817d03cd94d1/uv_mre_01_dep_02-0.0.0.tar.gz": "gldt-pUesAqQG4Nvaw5oUyNC3",
+    "https://gitlab.com/api/v4/projects/67685669/packages/pypi/simple/uv-mre-01-dep-02/": "gldt-pUesAqQG4Nvaw5oUyNC3"
 }
